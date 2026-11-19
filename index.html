@@ -1,0 +1,221 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KRUN - THPT Tân Thạnh</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#eef4f8;color:#172554}
+header{background:linear-gradient(120deg,#0756bd,#059669);color:white;padding:22px;text-align:center}
+main{max-width:850px;margin:25px auto;padding:15px}
+.card{background:white;padding:22px;border-radius:16px;margin-bottom:18px;box-shadow:0 5px 20px #0001}
+h2{margin-top:0}
+input,button{width:100%;padding:13px;margin:7px 0;border-radius:9px;border:1px solid #ccd5e1;font-size:15px}
+button{background:#0876d1;color:white;border:0;font-weight:bold;cursor:pointer}
+button:hover{opacity:.88}
+.green{background:#059669}
+.red{background:#dc2626}
+.tabs{display:flex;gap:7px}
+.tabs button{flex:1}
+.hidden{display:none}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat div{background:#eaf4ff;padding:15px;border-radius:12px;text-align:center}
+.stat strong{display:block;font-size:24px;color:#0876d1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:10px;border-bottom:1px solid #ddd;text-align:left}
+.table-wrap{overflow-x:auto}
+#message{padding:10px;border-radius:8px}
+@media(max-width:550px){.stat{grid-template-columns:1fr 1fr}main{padding:10px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏃 KRUN</h1>
+  <p>TRƯỜNG THPT TÂN THẠNH</p>
+  <p>Hệ thống điểm danh và rèn luyện chạy bộ</p>
+</header>
+
+<main>
+<div id="message" class="hidden"></div>
+
+<section id="auth">
+ <div class="card">
+  <div class="tabs">
+   <button onclick="showTab('login')">Đăng nhập</button>
+   <button onclick="showTab('register')">Đăng ký</button>
+  </div>
+
+  <div id="login">
+   <h2>Đăng nhập KRUN</h2>
+   <input id="login-user" placeholder="Số điện thoại hoặc tài khoản quản trị">
+   <input id="login-pass" type="password" placeholder="Mật khẩu">
+   <button onclick="login()">Đăng nhập</button>
+  </div>
+
+  <div id="register" class="hidden">
+   <h2>Đăng ký học sinh</h2>
+   <input id="reg-name" placeholder="Họ và tên">
+   <input id="reg-class" placeholder="Lớp học (VD: 11A1)">
+   <input id="reg-phone" placeholder="Số điện thoại">
+   <input id="reg-pass" type="password" placeholder="Mật khẩu (ít nhất 6 ký tự)">
+   <input id="reg-forgot password" 
+    <button class="green" onclick="register()">Tạo tài khoản</button>
+  </div>
+ </div>
+</section>
+
+<section id="student" class="hidden">
+ <div class="card">
+  <h2>Xin chào, <span id="student-name"></span></h2>
+  <p>Lớp: <b id="student-class"></b></p>
+  <div class="stat">
+   <div><strong id="points">0</strong>Điểm</div>
+   <div><strong id="km">0</strong>Tổng km</div>
+   <div><strong id="today-km">0</strong>Km hôm nay</div>
+  </div>
+ </div>
+
+ <div class="card">
+  <h2>📅 Điểm danh</h2>
+  <p>Mỗi ngày điểm danh được cộng 5 điểm.</p>
+  <button class="green" onclick="checkin()">Điểm danh hôm nay</button>
+ </div>
+
+ <div class="card">
+  <h2>🏃 Ghi nhận chạy bộ</h2>
+  <p>5 điểm/km, tối đa 20 km mỗi ngày.</p>
+  <input id="run-km" type="number" min="0.1" max="20" step="0.1" placeholder="Số km đã chạy">
+  <button onclick="addRun()">Ghi nhận quãng đường</button>
+ </div>
+
+ <div class="card">
+  <h2>📜 Lịch sử hoạt động</h2>
+  <div class="table-wrap">
+   <table><thead><tr><th>Hoạt động</th><th>Điểm</th><th>Ngày</th></tr></thead>
+   <tbody id="history"></tbody></table>
+  </div>
+ </div>
+ <button class="red" onclick="logout()">Đăng xuất</button>
+</section>
+
+<section id="admin" class="hidden">
+ <div class="card">
+  <h2>🛡️ QUẢN TRỊ KRUN</h2>
+  <p>Quản lý học sinh toàn trường.</p>
+  <div class="stat">
+   <div><strong id="total-students">0</strong>Học sinh</div>
+   <div><strong id="total-km">0</strong>Tổng km</div>
+   <div><strong id="total-points">0</strong>Tổng điểm</div>
+  </div>
+ </div>
+
+ <div class="card">
+  <h2>Danh sách học sinh</h2>
+  <input id="search" placeholder="Tìm tên, lớp hoặc số điện thoại" oninput="filterStudents()">
+  <div class="table-wrap">
+   <table>
+    <thead><tr><th>Họ tên</th><th>Lớp</th><th>SĐT</th><th>Km</th><th>Điểm</th></tr></thead>
+    <tbody id="students-table"></tbody>
+   </table>
+  </div>
+  <button class="green" onclick="loadAdmin()">Làm mới dữ liệu</button>
+  <button class="red" onclick="resetPoints()">Reset điểm toàn trường</button>
+ </div>
+ <button class="red" onclick="logout()">Đăng xuất quản trị</button>
+</section>
+</main>
+
+<script>
+const SUPABASE_URL = "DAN_PROJECT_URL_CUA_BAN";
+const SUPABASE_ANON_KEY = "DAN_ANON_KEY_CUA_BAN";
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+let currentUser = null;
+let allStudents = [];
+
+function message(text, error=false){
+  const el=document.getElementById('message');
+  el.textContent=text;
+  el.style.background=error?'#fee2e2':'#dcfce7';
+  el.style.color=error?'#991b1b':'#166534';
+  el.classList.remove('hidden');
+}
+
+function showTab(tab){
+  document.getElementById('login').classList.toggle('hidden',tab!=='login');
+  document.getElementById('register').classList.toggle('hidden',tab!=='register');
+}
+
+function emailFromUser(value){
+  const v=value.trim().toLowerCase();
+  if(v.includes('@')) return v.endsWith('@krun.app') ? v : v+'@krun.app';
+  return v+'@krun.app';
+}
+
+async function register(){
+  const name=document.getElementById('reg-name').value.trim();
+  const cls=document.getElementById('reg-class').value.trim().toUpperCase();
+  const phone=document.getElementById('reg-phone').value.trim();
+  const password=document.getElementById('reg-pass').value;
+
+  if(name.length<2 || !/^[0-9]{2}[A-Z0-9]{1,6}$/.test(cls)){
+    return message('Vui lòng kiểm tra họ tên và lớp học.',true);
+  }
+  if(!/^0[0-9]{9,10}$/.test(phone)){
+    return message('Số điện thoại không hợp lệ.',true);
+  }
+  if(password.length<8){
+    return message('Mật khẩu cần ít nhất 8 ký tự.',true);
+  }
+
+  const {data,error}=await db.auth.signUp({
+    email:emailFromUser(phone),
+    password,
+    options:{data:{
+      full_name:name,
+      class_name:cls,
+      phone:phone
+    }}
+  });
+
+  if(error) return message(error.message,true);
+  if(!data.session){
+    return message('Đã tạo tài khoản. Nếu chưa đăng nhập được, kiểm tra cài đặt xác nhận email trong Supabase.');
+  }
+  currentUser=data.user;
+  await openDashboard();
+}
+
+async function login(){
+  const username=document.getElementById('login-user').value.trim();
+  const password=document.getElementById('login-pass').value;
+  if(!username || !password) return message('Nhập đầy đủ tài khoản và mật khẩu.',true);
+
+  const {data,error}=await db.auth.signInWithPassword({
+    email:emailFromUser(username),
+    password
+  });
+  if(error) return message('Đăng nhập thất bại. Kiểm tra tài khoản và mật khẩu.',true);
+  currentUser=data.user;
+  await openDashboard();
+}
+
+async function openDashboard(){
+  const {data:profile,error}=await db.from('profiles')
+    .select('*').eq('id',currentUser.id).single();
+
+  if(error || !profile){
+    message('Không tìm thấy hồ sơ tài khoản.',true);
+    return;
+  }
+
+  document.getElementById('auth').classList.add('hidden');
+  document.getElementById('student').classList.add('hidden');
+  document.getElementById('admin').
